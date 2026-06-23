@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+ 
+    <title>Reaktionsjäger</title>
+ 
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+ 
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            font-family: Arial, sans-serif;
+            color: white;
+            background: linear-gradient(150deg, #111827, #1d4ed8);
+        }
+ 
+        .spiel {
+            width: min(850px, 94vw);
+        }
+ 
+        h1,
+        .untertitel {
+            text-align: center;
+        }
+ 
+        .anzeigen {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin: 20px 0;
+        }
+ 
+        .karte {
+            padding: 14px;
+            text-align: center;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.14);
+        }
+ 
+        .wert {
+            display: block;
+            margin-top: 6px;
+            font-size: 2rem;
+            font-weight: bold;
+        }
+ 
+        #spielfeld {
+            position: relative;
+            height: 420px;
+            overflow: hidden;
+            border: 3px solid white;
+            border-radius: 18px;
+            background: #0f172a;
+        }
+ 
+        #ziel {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+ 
+            width: 80px;
+            height: 80px;
+ 
+            transform: translate(-50%, -50%);
+ 
+            border: none;
+            border-radius: 50%;
+ 
+            background: #22c55e;
+            box-shadow: 0 0 30px #22c55e;
+ 
+            cursor: pointer;
+            display: none;
+        }
+ 
+        .steuerung {
+            margin-top: 16px;
+            text-align: center;
+        }
+ 
+        #start {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+ 
+            font-size: 1rem;
+            font-weight: bold;
+ 
+            background: #facc15;
+            color: #111827;
+ 
+            cursor: pointer;
+        }
+ 
+        #meldung {
+            min-height: 28px;
+            text-align: center;
+            font-weight: bold;
+        }
+ 
+        @media (max-width: 600px) {
+            .anzeigen {
+                grid-template-columns: 1fr;
+            }
+ 
+            #spielfeld {
+                height: 350px;
+            }
+        }
+</style>
+</head>
+ 
+<body>
+<main class="spiel">
+<h1>Reaktionsjäger</h1>
+ 
+        <p class="untertitel">
+            Triff das Ziel so oft wie möglich.
+</p>
+ 
+        <section class="anzeigen">
+<div class="karte">
+                Punkte
+<span id="punkte" class="wert">0</span>
+</div>
+ 
+            <div class="karte">
+                Zeit
+<span id="zeit" class="wert">20</span>
+</div>
+ 
+            <div class="karte">
+                Rekord
+<span id="rekord" class="wert">0</span>
+</div>
+</section>
+ 
+        <section id="spielfeld">
+<button id="ziel" aria-label="Ziel"></button>
+</section>
+ 
+        <div class="steuerung">
+<button id="start">Spiel starten</button>
+</div>
+ 
+        <p id="meldung">Bereit?</p>
+</main>
+ 
+    <script>
+        const spielfeld = document.getElementById("spielfeld");
+        const ziel = document.getElementById("ziel");
+        const startTaste = document.getElementById("start");
+ 
+        const punkteAnzeige = document.getElementById("punkte");
+        const zeitAnzeige = document.getElementById("zeit");
+        const rekordAnzeige = document.getElementById("rekord");
+        const meldung = document.getElementById("meldung");
+ 
+        let punkte = 0;
+        let restzeit = 20;
+        let spielLaeuft = false;
+        let timerId = null;
+ 
+        function anzeigeAktualisieren() {
+            punkteAnzeige.textContent = punkte;
+            zeitAnzeige.textContent = restzeit;
+        }
+ 
+        function zielInMitteSetzen() {
+            ziel.style.left = "50%";
+            ziel.style.top = "50%";
+        }
+ 
+        function spielStarten() {
+            punkte = 0;
+            restzeit = 20;
+            spielLaeuft = true;
+ 
+            anzeigeAktualisieren();
+ 
+            meldung.textContent = "Los!";
+            startTaste.disabled = true;
+            ziel.style.display = "block";
+ 
+            zielInMitteSetzen();
+ 
+            clearInterval(timerId);
+ 
+            timerId = setInterval(function () {
+                restzeit--;
+ 
+                anzeigeAktualisieren();
+ 
+                if (restzeit <= 0) {
+                    spielBeenden();
+                }
+            }, 1000);
+        }
+ 
+        function spielBeenden() {
+            spielLaeuft = false;
+ 
+            clearInterval(timerId);
+ 
+            ziel.style.display = "none";
+            startTaste.disabled = false;
+ 
+            meldung.textContent =
+                "Zeit vorbei. Du hast " + punkte + " Punkte erreicht.";
+        }
+ 
+        ziel.addEventListener("click", function () {
+            if (!spielLaeuft) {
+                return;
+            }
+ 
+            punkte++;
+ 
+            anzeigeAktualisieren();
+ 
+            // Aufgabe 1:
+            // Das Ziel soll an eine zufällige Stelle springen.
+        });
+ 
+        startTaste.addEventListener("click", spielStarten);
+ 
+        // Aufgabe 2:
+        // Rekord laden und speichern.
+ 
+        // Aufgabe 3:
+        // Eine eigene Erweiterung ergänzen.
+ 
+        anzeigeAktualisieren();
+</script>
+</body>
+</html>
