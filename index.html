@@ -62,22 +62,18 @@
  
         #ziel {
             position: absolute;
-            left: 50%;
-            top: 50%;
- 
             width: 80px;
             height: 80px;
- 
-            transform: translate(-50%, -50%);
- 
+
             border: none;
             border-radius: 50%;
- 
+
             background: #22c55e;
             box-shadow: 0 0 30px #22c55e;
- 
+
             cursor: pointer;
             display: none;
+            margin: -40px 0 0 -40px;
         }
  
         .steuerung {
@@ -167,15 +163,69 @@
         let restzeit = 20;
         let spielLaeuft = false;
         let timerId = null;
+        let rekord = 0;
+        
+        // Target movement
+        let targetX = 0;
+        let targetY = 0;
+        let velocityX = 5;
+        let velocityY = 5;
+        let animationId = null;
  
         function anzeigeAktualisieren() {
             punkteAnzeige.textContent = punkte;
             zeitAnzeige.textContent = restzeit;
+            rekordAnzeige.textContent = rekord;
         }
  
         function zielInMitteSetzen() {
             ziel.style.left = "50%";
             ziel.style.top = "50%";
+        }
+
+        function zielZuZufaelligerStelleSetzen() {
+            const spielfeldWidth = spielfeld.offsetWidth;
+            const spielfeldHeight = spielfeld.offsetHeight;
+            
+            const minLeft = 40;
+            const maxLeft = spielfeldWidth - 40;
+            const minTop = 40;
+            const maxTop = spielfeldHeight - 40;
+            
+            const randomLeft = Math.random() * (maxLeft - minLeft) + minLeft;
+            const randomTop = Math.random() * (maxTop - minTop) + minTop;
+            
+            ziel.style.left = randomLeft + "px";
+            ziel.style.top = randomTop + "px";
+        }
+
+        function updateTargetPosition() {
+            const spielfeldWidth = spielfeld.offsetWidth;
+            const spielfeldHeight = spielfeld.offsetHeight;
+            const targetRadius = 40; // half of 80px width/height
+            
+            // Update position
+            targetX += velocityX;
+            targetY += velocityY;
+            
+            // Bounce off walls
+            if (targetX - targetRadius <= 0 || targetX + targetRadius >= spielfeldWidth) {
+                velocityX *= -1;
+                targetX = Math.max(targetRadius, Math.min(spielfeldWidth - targetRadius, targetX));
+            }
+            
+            if (targetY - targetRadius <= 0 || targetY + targetRadius >= spielfeldHeight) {
+                velocityY *= -1;
+                targetY = Math.max(targetRadius, Math.min(spielfeldHeight - targetRadius, targetY));
+            }
+            
+            // Apply position to DOM
+            ziel.style.left = targetX + "px";
+            ziel.style.top = targetY + "px";
+            
+            if (spielLaeuft) {
+                animationId = requestAnimationFrame(updateTargetPosition);
+            }
         }
  
         function spielStarten() {
@@ -189,15 +239,29 @@
             startTaste.disabled = true;
             ziel.style.display = "block";
  
-            zielInMitteSetzen();
- 
+            // Initialize target at random position with random velocity
+            const spielfeldWidth = spielfeld.offsetWidth;
+            const spielfeldHeight = spielfeld.offsetHeight;
+            targetX = 40 + Math.random() * (spielfeldWidth - 80);
+            targetY = 40 + Math.random() * (spielfeldHeight - 80);
+            
+            velocityX = (Math.random() - 0.5) * 10;
+            velocityY = (Math.random() - 0.5) * 10;
+            
+            if (velocityX === 0) velocityX = 5;
+            if (velocityY === 0) velocityY = 5;
+
+            // Start animation loop
+            if (animationId) cancelAnimationFrame(animationId);
+            updateTargetPosition();
+
             clearInterval(timerId);
- 
+
             timerId = setInterval(function () {
                 restzeit--;
- 
+
                 anzeigeAktualisieren();
- 
+
                 if (restzeit <= 0) {
                     spielBeenden();
                 }
@@ -208,12 +272,24 @@
             spielLaeuft = false;
  
             clearInterval(timerId);
- 
+            if (animationId) cancelAnimationFrame(animationId);
+
+            // Rekord prüfen und speichern
+            if (punkte > rekord) {
+                rekord = punkte;
+                try {
+                    localStorage.setItem('reaktionsjaeger_rekord', String(rekord));
+                } catch (e) {
+                    // ignore storage errors
+                }
+            }
+
+            anzeigeAktualisieren();
+
             ziel.style.display = "none";
             startTaste.disabled = false;
- 
-            meldung.textContent =
-                "Zeit vorbei. Du hast " + punkte + " Punkte erreicht.";
+
+            meldung.textContent = "Zeit vorbei. Du hast " + punkte + " Punkte erreicht.";
         }
  
         ziel.addEventListener("click", function () {
@@ -224,15 +300,26 @@
             punkte++;
  
             anzeigeAktualisieren();
- 
-            // Aufgabe 1:
-            // Das Ziel soll an eine zufällige Stelle springen.
+            
+            // Move to random position on click
+            const spielfeldWidth = spielfeld.offsetWidth;
+            const spielfeldHeight = spielfeld.offsetHeight;
+            targetX = 40 + Math.random() * (spielfeldWidth - 80);
+            targetY = 40 + Math.random() * (spielfeldHeight - 80);
         });
  
         startTaste.addEventListener("click", spielStarten);
  
         // Aufgabe 2:
         // Rekord laden und speichern.
+        try {
+            const saved = localStorage.getItem('reaktionsjaeger_rekord');
+            if (saved !== null) {
+                rekord = parseInt(saved, 10) || 0;
+            }
+        } catch (e) {
+            rekord = 0;
+        }
  
         // Aufgabe 3:
         // Eine eigene Erweiterung ergänzen.
