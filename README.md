@@ -1,24 +1,17 @@
 # Reaktionsjäger
 
-Ein einfaches Browser-Spiel zur Schulung der Reaktionszeit. Klicke so oft wie möglich auf das grüne Ziel, bevor die Zeit abläuft.
+A fast fun browser game.
 
-## Was ist enthalten
-- `index.html`: Spiel-Oberfläche, Styling und JavaScript-Logik.
-- Ein Timer, Punkteanzeige und Startknopf.
-- Ein Ziel, das beim Klick erscheinen und später zufällig bewegt werden kann.
+Hit the green target and avoid red fakes!
 
-## Spielanleitung
-1. Öffne `index.html` in einem Browser.
-2. Klicke auf „Spiel starten“. 
-3. Triff das Ziel so oft wie möglich, bevor die Zeit abläuft.
-4. Am Ende zeigt das Spiel die erreichten Punkte an.
+![alt text](readme/image.png)
 
-## Nutzung
-- Datei lokal im Browser öffnen.
-- Kein Server oder zusätzliche Abhängigkeiten notwendig.
+## Play
+- Set game time, speed, and fake count.
+- Click start.
+- Tap the green target while it moves.
+- If you click a fake red target, you lose!
 
-## Erweiterungen
-- Highscore speichern
-- Ziel zufällig bewegen
-- Schwierigkeitsgrade hinzufügen
-- Soundeffekte und Animationen ergänzen
+## Run
+- Open `index.html` in a browser. Or..
+- Run `npm run dev` if you want a local server.
