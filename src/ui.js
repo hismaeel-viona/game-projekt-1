@@ -1,0 +1,25 @@
+export function getElements() {
+    return {
+        gameField: document.getElementById('spielfeld'),
+        target: document.getElementById('target'),
+        startButton: document.getElementById('start'),
+        pointsDisplay: document.getElementById('punkte'),
+        timeDisplay: document.getElementById('zeit'),
+        recordDisplay: document.getElementById('rekord'),
+        message: document.getElementById('meldung'),
+        gameTimeSlider: document.getElementById('gameTimeSlider'),
+        speedSlider: document.getElementById('speedSlider'),
+        fakeCountSlider: document.getElementById('fakeCountSlider'),
+        gameTimeValue: document.getElementById('gameTimeValue'),
+        speedValue: document.getElementById('speedValue'),
+        fakeCountValue: document.getElementById('fakeCountValue')
+    };
+}
+
+export function createFakeTargetButton(gameField) {
+    const fakeTarget = document.createElement('button');
+    fakeTarget.className = 'fake-target';
+    fakeTarget.setAttribute('aria-label', 'Fake target');
+    gameField.appendChild(fakeTarget);
+    return fakeTarget;
+}
