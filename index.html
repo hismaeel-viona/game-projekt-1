@@ -21,8 +21,47 @@
             background: linear-gradient(150deg, #111827, #1d4ed8);
         }
  
+        .container {
+            display: flex;
+            gap: 20px;
+            width: min(1100px, 96vw);
+        }
+
+        .options {
+            width: 180px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .option-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .option-group label {
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        .option-group input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .option-value {
+            font-size: 0.85rem;
+            text-align: center;
+            color: #facc15;
+        }
+
         .spiel {
-            width: min(850px, 94vw);
+            flex: 1;
+            min-width: 300px;
         }
  
         h1,
@@ -60,7 +99,7 @@
             background: #0f172a;
         }
  
-        #ziel {
+        #target {
             position: absolute;
             width: 80px;
             height: 80px;
@@ -75,9 +114,25 @@
             display: none;
             margin: -40px 0 0 -40px;
         }
+
+        .fake-target {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+
+            border: none;
+            border-radius: 50%;
+
+            background: #ef4444;
+            box-shadow: 0 0 30px #ef4444;
+
+            cursor: pointer;
+            display: none;
+            margin: -40px 0 0 -40px;
+        }
  
         .steuerung {
-            margin-top: 16px;
+            margin: 16px 0 0;
             text-align: center;
         }
  
@@ -101,11 +156,27 @@
             font-weight: bold;
         }
  
+        @media (max-width: 900px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .options {
+                width: 100%;
+                flex-direction: row;
+                gap: 12px;
+            }
+
+            .option-group {
+                flex: 1;
+            }
+        }
+
         @media (max-width: 600px) {
             .anzeigen {
                 grid-template-columns: 1fr;
             }
- 
+
             #spielfeld {
                 height: 350px;
             }
@@ -114,7 +185,26 @@
 </head>
  
 <body>
-<main class="spiel">
+<div class="container">
+    <section class="options">
+        <div class="option-group">
+            <label for="gameTimeSlider">Game Time</label>
+            <input type="range" id="gameTimeSlider" min="5" max="30" value="20">
+            <span class="option-value" id="gameTimeValue">20s</span>
+        </div>
+        <div class="option-group">
+            <label for="speedSlider">Target Speed</label>
+            <input type="range" id="speedSlider" min="1" max="10" value="5">
+            <span class="option-value" id="speedValue">5</span>
+        </div>
+        <div class="option-group">
+            <label for="fakeCountSlider">Fake Targets</label>
+            <input type="range" id="fakeCountSlider" min="0" max="3" value="0">
+            <span class="option-value" id="fakeCountValue">0</span>
+        </div>
+    </section>
+
+    <main class="spiel">
 <h1>Reaktionsjäger</h1>
  
         <p class="untertitel">
@@ -139,31 +229,43 @@
 </section>
  
         <section id="spielfeld">
-<button id="ziel" aria-label="Ziel"></button>
-</section>
+            <button id="target" aria-label="Target"></button>
+        </section>
  
         <div class="steuerung">
-<button id="start">Spiel starten</button>
+            <button id="start">Spiel starten</button>
+        </div>
+ 
+        <p id="meldung">Ready?</p>
+    </main>
 </div>
  
-        <p id="meldung">Bereit?</p>
-</main>
- 
     <script>
-        const spielfeld = document.getElementById("spielfeld");
-        const ziel = document.getElementById("ziel");
-        const startTaste = document.getElementById("start");
- 
-        const punkteAnzeige = document.getElementById("punkte");
-        const zeitAnzeige = document.getElementById("zeit");
-        const rekordAnzeige = document.getElementById("rekord");
-        const meldung = document.getElementById("meldung");
- 
-        let punkte = 0;
-        let restzeit = 20;
-        let spielLaeuft = false;
+const gameField = document.getElementById("spielfeld");
+        const target = document.getElementById("target");
+        const startButton = document.getElementById("start");
+
+        const pointsDisplay = document.getElementById("punkte");
+        const timeDisplay = document.getElementById("zeit");
+        const recordDisplay = document.getElementById("rekord");
+        const message = document.getElementById("meldung");
+
+        const gameTimeSlider = document.getElementById("gameTimeSlider");
+        const speedSlider = document.getElementById("speedSlider");
+        const fakeCountSlider = document.getElementById("fakeCountSlider");
+        const gameTimeValue = document.getElementById("gameTimeValue");
+        const speedValue = document.getElementById("speedValue");
+        const fakeCountValue = document.getElementById("fakeCountValue");
+
+        let points = 0;
+        let remainingTime = 20;
+        let gameRunning = false;
         let timerId = null;
-        let rekord = 0;
+        let record = 0;
+        let gameTime = 20;
+        let baseSpeed = 5;
+        let fakeTargetCount = 0;
+        let fakeTargets = [];
         
         // Target movement
         let targetX = 0;
@@ -171,85 +273,166 @@
         let velocityX = 5;
         let velocityY = 5;
         let animationId = null;
- 
-        function anzeigeAktualisieren() {
-            punkteAnzeige.textContent = punkte;
-            zeitAnzeige.textContent = restzeit;
-            rekordAnzeige.textContent = rekord;
-        }
- 
-        function zielInMitteSetzen() {
-            ziel.style.left = "50%";
-            ziel.style.top = "50%";
+
+        // Slider change listeners
+        gameTimeSlider.addEventListener("input", function () {
+            gameTime = parseInt(this.value);
+            gameTimeValue.textContent = gameTime + "s";
+        });
+
+        speedSlider.addEventListener("input", function () {
+            baseSpeed = parseInt(this.value);
+            speedValue.textContent = baseSpeed;
+        });
+
+        fakeCountSlider.addEventListener("input", function () {
+            fakeTargetCount = parseInt(this.value);
+            fakeCountValue.textContent = fakeTargetCount;
+        });
+
+        function updateDisplay() {
+            pointsDisplay.textContent = points;
+            timeDisplay.textContent = remainingTime;
+            recordDisplay.textContent = record;
         }
 
-        function zielZuZufaelligerStelleSetzen() {
-            const spielfeldWidth = spielfeld.offsetWidth;
-            const spielfeldHeight = spielfeld.offsetHeight;
+        function createFakeTargets() {
+            fakeTargets = [];
+            for (let i = 0; i < fakeTargetCount; i++) {
+                const fakeTarget = document.createElement("button");
+                fakeTarget.className = "fake-target";
+                fakeTarget.setAttribute("aria-label", "Fake target");
+                gameField.appendChild(fakeTarget);
+                
+                const fakeData = {
+                    element: fakeTarget,
+                    x: 40 + Math.random() * (gameField.offsetWidth - 80),
+                    y: 40 + Math.random() * (gameField.offsetHeight - 80),
+                    vx: (Math.random() - 0.5) * baseSpeed * 2,
+                    vy: (Math.random() - 0.5) * baseSpeed * 2
+                };
+                
+                fakeTarget.addEventListener("click", function (e) {
+                    e.stopPropagation();
+                    if (gameRunning) {
+                        endGame(true);
+                    }
+                });
+                
+                fakeTargets.push(fakeData);
+            }
+        }
+
+        function removeFakeTargets() {
+            fakeTargets.forEach(ft => ft.element.remove());
+            fakeTargets = [];
+        }
+ 
+        function setTargetCenter() {
+            target.style.left = "50%";
+            target.style.top = "50%";
+        }
+
+        function setTargetRandomPosition() {
+            const gameFieldWidth = gameField.offsetWidth;
+            const gameFieldHeight = gameField.offsetHeight;
             
             const minLeft = 40;
-            const maxLeft = spielfeldWidth - 40;
+            const maxLeft = gameFieldWidth - 40;
             const minTop = 40;
-            const maxTop = spielfeldHeight - 40;
+            const maxTop = gameFieldHeight - 40;
             
             const randomLeft = Math.random() * (maxLeft - minLeft) + minLeft;
             const randomTop = Math.random() * (maxTop - minTop) + minTop;
             
-            ziel.style.left = randomLeft + "px";
-            ziel.style.top = randomTop + "px";
+            target.style.left = randomLeft + "px";
+            target.style.top = randomTop + "px";
         }
 
         function updateTargetPosition() {
-            const spielfeldWidth = spielfeld.offsetWidth;
-            const spielfeldHeight = spielfeld.offsetHeight;
+            const gameFieldWidth = gameField.offsetWidth;
+            const gameFieldHeight = gameField.offsetHeight;
             const targetRadius = 40; // half of 80px width/height
             
-            // Update position
+            // Update main target position
             targetX += velocityX;
             targetY += velocityY;
             
             // Bounce off walls
-            if (targetX - targetRadius <= 0 || targetX + targetRadius >= spielfeldWidth) {
+            if (targetX - targetRadius <= 0 || targetX + targetRadius >= gameFieldWidth) {
                 velocityX *= -1;
-                targetX = Math.max(targetRadius, Math.min(spielfeldWidth - targetRadius, targetX));
+                targetX = Math.max(targetRadius, Math.min(gameFieldWidth - targetRadius, targetX));
             }
             
-            if (targetY - targetRadius <= 0 || targetY + targetRadius >= spielfeldHeight) {
+            if (targetY - targetRadius <= 0 || targetY + targetRadius >= gameFieldHeight) {
                 velocityY *= -1;
-                targetY = Math.max(targetRadius, Math.min(spielfeldHeight - targetRadius, targetY));
+                targetY = Math.max(targetRadius, Math.min(gameFieldHeight - targetRadius, targetY));
             }
             
             // Apply position to DOM
-            ziel.style.left = targetX + "px";
-            ziel.style.top = targetY + "px";
+            target.style.left = targetX + "px";
+            target.style.top = targetY + "px";
+
+            // Update fake targets
+            fakeTargets.forEach(ft => {
+                ft.x += ft.vx;
+                ft.y += ft.vy;
+
+                // Bounce off walls
+                if (ft.x - targetRadius <= 0 || ft.x + targetRadius >= gameFieldWidth) {
+                    ft.vx *= -1;
+                    ft.x = Math.max(targetRadius, Math.min(gameFieldWidth - targetRadius, ft.x));
+                }
+                
+                if (ft.y - targetRadius <= 0 || ft.y + targetRadius >= gameFieldHeight) {
+                    ft.vy *= -1;
+                    ft.y = Math.max(targetRadius, Math.min(gameFieldHeight - targetRadius, ft.y));
+                }
+
+                ft.element.style.left = ft.x + "px";
+                ft.element.style.top = ft.y + "px";
+            });
             
-            if (spielLaeuft) {
+            if (gameRunning) {
                 animationId = requestAnimationFrame(updateTargetPosition);
             }
         }
  
-        function spielStarten() {
-            punkte = 0;
-            restzeit = 20;
-            spielLaeuft = true;
- 
-            anzeigeAktualisieren();
- 
-            meldung.textContent = "Los!";
-            startTaste.disabled = true;
-            ziel.style.display = "block";
- 
+        function startGame() {
+            points = 0;
+            remainingTime = gameTime;
+            gameRunning = true;
+
+            // Disable sliders during game
+            gameTimeSlider.disabled = true;
+            speedSlider.disabled = true;
+            fakeCountSlider.disabled = true;
+
+            updateDisplay();
+
+            message.textContent = "Go!";
+            startButton.disabled = true;
+            target.style.display = "block";
+
+            // Create fake targets
+            createFakeTargets();
+            fakeTargets.forEach(ft => {
+                ft.element.style.display = "block";
+                if (ft.vx === 0) ft.vx = baseSpeed;
+                if (ft.vy === 0) ft.vy = baseSpeed;
+            });
+
             // Initialize target at random position with random velocity
-            const spielfeldWidth = spielfeld.offsetWidth;
-            const spielfeldHeight = spielfeld.offsetHeight;
-            targetX = 40 + Math.random() * (spielfeldWidth - 80);
-            targetY = 40 + Math.random() * (spielfeldHeight - 80);
+            const gameFieldWidth = gameField.offsetWidth;
+            const gameFieldHeight = gameField.offsetHeight;
+            targetX = 40 + Math.random() * (gameFieldWidth - 80);
+            targetY = 40 + Math.random() * (gameFieldHeight - 80);
             
-            velocityX = (Math.random() - 0.5) * 10;
-            velocityY = (Math.random() - 0.5) * 10;
+            velocityX = (Math.random() - 0.5) * baseSpeed * 2;
+            velocityY = (Math.random() - 0.5) * baseSpeed * 2;
             
-            if (velocityX === 0) velocityX = 5;
-            if (velocityY === 0) velocityY = 5;
+            if (velocityX === 0) velocityX = baseSpeed;
+            if (velocityY === 0) velocityY = baseSpeed;
 
             // Start animation loop
             if (animationId) cancelAnimationFrame(animationId);
@@ -258,73 +441,82 @@
             clearInterval(timerId);
 
             timerId = setInterval(function () {
-                restzeit--;
+                remainingTime--;
 
-                anzeigeAktualisieren();
+                updateDisplay();
 
-                if (restzeit <= 0) {
-                    spielBeenden();
+                if (remainingTime <= 0) {
+                    endGame();
                 }
             }, 1000);
         }
  
-        function spielBeenden() {
-            spielLaeuft = false;
- 
+function endGame(hitFake = false) {
+            gameRunning = false;
+
             clearInterval(timerId);
             if (animationId) cancelAnimationFrame(animationId);
 
-            // Rekord prüfen und speichern
-            if (punkte > rekord) {
-                rekord = punkte;
+            // Check and save record
+            if (points > record) {
+                record = points;
                 try {
-                    localStorage.setItem('reaktionsjaeger_rekord', String(rekord));
+                    localStorage.setItem('reaction_hunter_record', String(record));
                 } catch (e) {
                     // ignore storage errors
                 }
             }
 
-            anzeigeAktualisieren();
+            updateDisplay();
 
-            ziel.style.display = "none";
-            startTaste.disabled = false;
+            target.style.display = "none";
+            fakeTargets.forEach(ft => ft.element.style.display = "none");
+            removeFakeTargets();
+            
+            startButton.disabled = false;
+            gameTimeSlider.disabled = false;
+            speedSlider.disabled = false;
+            fakeCountSlider.disabled = false;
 
-            meldung.textContent = "Zeit vorbei. Du hast " + punkte + " Punkte erreicht.";
+            if (hitFake) {
+                message.textContent = "Oops! You hit a fake target. You lost!";
+            } else {
+                message.textContent = "Time's up. You scored " + points + " points.";
+            }
         }
  
-        ziel.addEventListener("click", function () {
-            if (!spielLaeuft) {
+        target.addEventListener("click", function () {
+            if (!gameRunning) {
                 return;
             }
  
-            punkte++;
+            points++;
  
-            anzeigeAktualisieren();
+            updateDisplay();
             
             // Move to random position on click
-            const spielfeldWidth = spielfeld.offsetWidth;
-            const spielfeldHeight = spielfeld.offsetHeight;
-            targetX = 40 + Math.random() * (spielfeldWidth - 80);
-            targetY = 40 + Math.random() * (spielfeldHeight - 80);
+            const gameFieldWidth = gameField.offsetWidth;
+            const gameFieldHeight = gameField.offsetHeight;
+            targetX = 40 + Math.random() * (gameFieldWidth - 80);
+            targetY = 40 + Math.random() * (gameFieldHeight - 80);
         });
- 
-        startTaste.addEventListener("click", spielStarten);
- 
-        // Aufgabe 2:
-        // Rekord laden und speichern.
+
+        startButton.addEventListener("click", startGame);
+        
+        // Load saved record
         try {
-            const saved = localStorage.getItem('reaktionsjaeger_rekord');
+            const saved = localStorage.getItem('reaction_hunter_record');
             if (saved !== null) {
-                rekord = parseInt(saved, 10) || 0;
+                record = parseInt(saved, 10) || 0;
             }
         } catch (e) {
-            rekord = 0;
+            record = 0;
         }
+
+        // Task 3:
+        // Add your own enhancement.
  
-        // Aufgabe 3:
-        // Eine eigene Erweiterung ergänzen.
- 
-        anzeigeAktualisieren();
+        updateDisplay();
 </script>
 </body>
 </html>
