@@ -15,3 +15,7 @@ Hit the green target and avoid red fakes!
 ## Run
 - Open `index.html` in a browser. Or..
 - Run `npm run dev` if you want a local server.
+
+## Tests
+- Run `npm test` to execute the full test suite.
+- Run `npm run test:watch` to rerun tests automatically when files change.

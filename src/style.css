@@ -10,12 +10,34 @@ body {
     font-family: Arial, sans-serif;
     color: white;
     background: radial-gradient(circle at top, #111827 0%, #05070f 40%, #000000 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+.background-squares {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.background-square {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    background: rgba(252, 201, 21, 0.95);
+    box-shadow: 0 0 14px rgba(252, 201, 21, 0.45);
+    border-radius: 4px;
+    transform: translate(-50%, -50%) rotate(0deg);
+    transition: transform 0.1s ease, width 0.1s ease, height 0.1s ease;
 }
 
 .container {
     display: flex;
     gap: 20px;
     width: min(1100px, 96vw);
+    position: relative;
+    z-index: 1;
 }
 
 .options {

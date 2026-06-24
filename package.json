@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:watch": "vitest --watch"
   },
   "repository": {
     "type": "git",
@@ -21,6 +24,8 @@
   },
   "homepage": "https://github.com/hismaeel-viona/game-projekt-1#readme",
   "devDependencies": {
-    "vite": "^8.0.16"
+    "jsdom": "^29.1.1",
+    "vite": "^8.0.16",
+    "vitest": "^4.1.9"
   }
 }

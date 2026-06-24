@@ -10,9 +10,13 @@ export function getElements() {
         gameTimeSlider: document.getElementById('gameTimeSlider'),
         speedSlider: document.getElementById('speedSlider'),
         fakeCountSlider: document.getElementById('fakeCountSlider'),
+        squareCountSlider: document.getElementById('squareCountSlider'),
+        starCountSlider: document.getElementById('starCountSlider'),
         gameTimeValue: document.getElementById('gameTimeValue'),
         speedValue: document.getElementById('speedValue'),
-        fakeCountValue: document.getElementById('fakeCountValue')
+        fakeCountValue: document.getElementById('fakeCountValue'),
+        squareCountValue: document.getElementById('squareCountValue'),
+        starCountValue: document.getElementById('starCountValue')
     };
 }
 
