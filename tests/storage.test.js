@@ -1,6 +1,6 @@
 /* @vitest-environment jsdom */
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { loadRecord, saveRecord, loadHighscoreList, getHighscoreList, saveHighscoreEntry } from "../src/storage.js";
+import { loadRecord, saveRecord, loadHighscoreList, getHighscoreList, saveHighscoreEntry, clearHighscoreList } from "../src/storage.js";
 
 describe("storage module", () => {
   let originalLocalStorage;
@@ -10,6 +10,7 @@ describe("storage module", () => {
     global.localStorage = {
       getItem: vi.fn(),
       setItem: vi.fn(),
+      removeItem: vi.fn(),
     };
   });
 
@@ -59,6 +60,11 @@ describe("storage module", () => {
         { score: 10, text: "First", date: "2026-01-01T00:00:00.000Z" },
       ])
     );
+  });
+
+  test("clearHighscoreList removes the highscore storage key", () => {
+    clearHighscoreList();
+    expect(global.localStorage.removeItem).toHaveBeenCalledWith("reaction_hunter_highscores");
   });
 
   test("saveRecord writes the record to localStorage", () => {

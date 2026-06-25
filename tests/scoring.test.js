@@ -1,10 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { updateDisplay, updateRecord } from "../src/scoring.js";
-import {
-  calculatePoints,
-  updateDisplay,
-  updateRecord
-} from "../src/scoring.js";
+import { updateDisplay, updateRecord, calculatePoints } from "../src/scoring.js";
 
 describe("scoring module", () => {
   test("updateRecord returns new record when points are higher", () => {

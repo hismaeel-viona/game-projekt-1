@@ -28,6 +28,17 @@ beforeAll(async () => {
           <button id="target"></button>
         </section>
         <button id="start">Start</button>
+        <section class="highscore">
+          <ol id="highscoreEntries"></ol>
+          <button id="clearHighscores">Highscores löschen</button>
+        </section>
+        <section class="highscore-entry hidden" id="highscoreEntryForm">
+          <label for="highscoreText">Text für aktuellen Score eingeben:</label>
+          <div class="highscore-entry-row">
+            <input type="text" id="highscoreText" maxlength="50" placeholder="Kurztext eingeben" />
+            <button id="submitHighscore">Speichern</button>
+          </div>
+        </section>
         <p id="meldung"></p>
       </main>
     </div>
