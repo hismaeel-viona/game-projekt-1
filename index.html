@@ -71,6 +71,22 @@
             <button id="start">Spiel starten</button>
         </div>
  
+        <section class="highscore">
+            <h2>Highscore-Liste</h2>
+            <ol id="highscoreEntries">
+                <li>Keine Einträge</li>
+            </ol>
+            <button id="clearHighscores" class="clear-button">Highscores löschen</button>
+        </section>
+
+        <section class="highscore-entry hidden" id="highscoreEntryForm">
+            <label for="highscoreText">Text für aktuellen Score eingeben:</label>
+            <div class="highscore-entry-row">
+                <input type="text" id="highscoreText" maxlength="50" placeholder="Kurztext eingeben" />
+                <button id="submitHighscore">Speichern</button>
+            </div>
+        </section>
+
         <p id="meldung">Ready?</p>
     </main>
 </div>

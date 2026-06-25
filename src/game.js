@@ -1,6 +1,6 @@
 import { getElements, createFakeTargetButton } from './ui.js';
-import { updateDisplay, updateRecord } from './scoring.js';
-import { loadRecord, saveRecord } from './storage.js';
+import { updateDisplay, updateRecord, calculatePoints } from './scoring.js';
+import { loadRecord, saveRecord, saveHighscoreEntry, getHighscoreList, clearHighscoreList } from './storage.js';
 
 const {
     gameField,
@@ -19,7 +19,12 @@ const {
     speedValue,
     fakeCountValue,
     squareCountValue,
-    starCountValue
+    starCountValue,
+    highscoreEntries,
+    highscoreEntryForm,
+    highscoreText,
+    submitHighscore,
+    clearHighscores
 } = getElements();
 
 const body = document.body;
@@ -201,6 +206,8 @@ function updateTargetPosition() {
 }
 
 function startGame() {
+    hideHighscoreEntryForm();
+    message.textContent = 'Spiel läuft...';
     points = 0;
     remainingTime = gameTime;
     gameRunning = true;
@@ -253,7 +260,8 @@ function endGame(hitFake = false) {
     if (animationId) cancelAnimationFrame(animationId);
 
     const newRecord = updateRecord(points, record);
-    if (newRecord !== record) {
+    const isNewRecord = newRecord !== record;
+    if (isNewRecord) {
         record = newRecord;
         saveRecord(record);
     }
@@ -270,23 +278,70 @@ function endGame(hitFake = false) {
     starCountSlider.disabled = false;
 
     if (hitFake) {
-        message.textContent = 'Oops! You hit a fake target. You lost!';
+        message.textContent = 'Oops! You hit a fake target. Du kannst deinen Score jetzt speichern.';
     } else {
-        message.textContent = 'Time\'s up. You scored ' + points + ' points.';
+        message.textContent = 'Time\'s up. Du kannst deinen Score jetzt speichern.';
     }
+    showHighscoreEntryForm();
+
     updateDisplay({ pointsDisplay, timeDisplay, recordDisplay, points, remainingTime, record });
 }
 
 function handleTargetClick() {
     if (!gameRunning) return;
 
-    points++;
+    points = calculatePoints(points);
     updateDisplay({ pointsDisplay, timeDisplay, recordDisplay, points, remainingTime, record });
 
     const gameFieldWidth = gameField.offsetWidth;
     const gameFieldHeight = gameField.offsetHeight;
     targetX = 40 + Math.random() * (gameFieldWidth - 80);
     targetY = 40 + Math.random() * (gameFieldHeight - 80);
+}
+
+function showHighscoreEntryForm() {
+    if (!highscoreEntryForm || !highscoreText) return;
+    highscoreEntryForm.classList.remove('hidden');
+    highscoreText.value = '';
+    highscoreText.focus();
+}
+
+function hideHighscoreEntryForm() {
+    if (!highscoreEntryForm || !highscoreText) return;
+    highscoreEntryForm.classList.add('hidden');
+    highscoreText.value = '';
+}
+
+function submitHighscoreEntry() {
+    if (!highscoreText) return;
+    const text = highscoreText.value.trim().slice(0, 50);
+    saveHighscoreEntry({
+        score: points,
+        text,
+        date: new Date().toISOString(),
+    });
+    renderHighscoreList();
+    hideHighscoreEntryForm();
+    message.textContent = 'Score gespeichert!';
+}
+
+function renderHighscoreList() {
+    if (!highscoreEntries) return;
+    const highscores = getHighscoreList();
+    highscoreEntries.innerHTML = '';
+
+    if (highscores.length === 0) {
+        highscoreEntries.innerHTML = '<li>Keine Einträge</li>';
+        return;
+    }
+
+    highscores.slice(0, 10).forEach((entry) => {
+        const li = document.createElement('li');
+        const label = entry.text ? `${entry.text} — ` : '';
+        const date = entry.date ? new Date(entry.date).toLocaleDateString('de-DE') : '';
+        li.textContent = `${entry.score} Punkte — ${label}${date}`.trim();
+        highscoreEntries.appendChild(li);
+    });
 }
 
 function setupEventListeners() {
@@ -317,6 +372,20 @@ function setupEventListeners() {
         createBackgroundStars();
     });
 
+    if (submitHighscore) {
+        submitHighscore.addEventListener('click', function () {
+            submitHighscoreEntry();
+        });
+    }
+
+    if (clearHighscores) {
+        clearHighscores.addEventListener('click', function () {
+            clearHighscoreList();
+            renderHighscoreList();
+            message.textContent = 'Highscores gelöscht.';
+        });
+    }
+
     target.addEventListener('click', handleTargetClick);
     startButton.addEventListener('click', startGame);
     window.addEventListener('mousemove', event => {
@@ -331,6 +400,8 @@ function initializeGame() {
     record = loadRecord();
     updateSliderValues();
     updateDisplay({ pointsDisplay, timeDisplay, recordDisplay, points, remainingTime, record });
+    renderHighscoreList();
+    hideHighscoreEntryForm();
     setupEventListeners();
 }
 

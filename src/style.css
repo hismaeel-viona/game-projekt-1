@@ -177,7 +177,8 @@ h1,
     text-align: center;
 }
 
-#start {
+#start,
+.clear-button {
     padding: 12px 24px;
     border: none;
     border-radius: 10px;
@@ -211,6 +212,43 @@ h1,
     .option-group {
         flex: 1;
     }
+}
+
+.hidden {
+    display: none !important;
+}
+
+.highscore-entry {
+    margin: 16px auto;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.highscore-entry-row {
+    display: flex;
+    gap: 10px;
+}
+
+.highscore-entry input {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.12);
+    color: white;
+}
+
+.highscore-entry button {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 10px;
+    background: #facc15;
+    color: #111827;
+    cursor: pointer;
 }
 
 @media (max-width: 600px) {

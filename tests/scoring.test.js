@@ -1,5 +1,10 @@
 import { describe, expect, test } from "vitest";
 import { updateDisplay, updateRecord } from "../src/scoring.js";
+import {
+  calculatePoints,
+  updateDisplay,
+  updateRecord
+} from "../src/scoring.js";
 
 describe("scoring module", () => {
   test("updateRecord returns new record when points are higher", () => {
@@ -27,5 +32,13 @@ describe("scoring module", () => {
     expect(pointsDisplay.textContent).toBe(8);
     expect(timeDisplay.textContent).toBe(14);
     expect(recordDisplay.textContent).toBe(20);
+  });
+
+  test("calculatePoints adds one point normally", () => {
+    expect(calculatePoints(3)).toBe(4);
+  });
+  
+  test("calculatePoints adds a bonus point on every fifth hit", () => {
+    expect(calculatePoints(4)).toBe(6);
   });
 });
