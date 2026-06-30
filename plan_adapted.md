@@ -174,3 +174,4 @@ Make the game usable with keyboard controls and ensure feature stability.
 |---|---|---|---|
 | 1 | Refactor `src/game.js` to use a centralized `state` object and keep UI bindings in `src/ui.js` | Success | `src/game.js` now uses `state` and `ui`; `npm test` passes. |
 | 2 | Add difficulty presets and selector UI, plus preset-driven game state | Success | Difficulty presets added; new tests added and `npm test` passes (16/16). |
+| 3 | Add misclick tracking for blank field clicks and classify hit types | Success | `hitCount`, `fakeHitCount`, and `missCount` added; blank-field clicks now increment miss count. |

@@ -269,6 +269,9 @@ function startGame() {
     state.points = 0;
     state.remainingTime = state.gameTime;
     state.gameRunning = true;
+    state.hitCount = 0;
+    state.fakeHitCount = 0;
+    state.missCount = 0;
 
     gameTimeSlider.disabled = true;
     speedSlider.disabled = true;
@@ -342,9 +345,11 @@ function endGame(hitFake = false) {
     updateDisplay({ pointsDisplay, timeDisplay, recordDisplay, points: state.points, remainingTime: state.remainingTime, record: state.record });
 }
 
-function handleTargetClick() {
+function handleTargetClick(event) {
     if (!state.gameRunning) return;
+    event.stopPropagation();
 
+    state.hitCount += 1;
     state.points = calculatePoints(state.points);
     updateDisplay({ pointsDisplay, timeDisplay, recordDisplay, points: state.points, remainingTime: state.remainingTime, record: state.record });
 
@@ -352,6 +357,13 @@ function handleTargetClick() {
     const gameFieldHeight = gameField.offsetHeight;
     state.targetX = 40 + Math.random() * (gameFieldWidth - 80);
     state.targetY = 40 + Math.random() * (gameFieldHeight - 80);
+}
+
+function handleGameFieldClick() {
+    if (!state.gameRunning) return;
+
+    state.missCount += 1;
+    message.textContent = 'Miss! Keep trying.';
 }
 
 function showHighscoreEntryForm() {
@@ -447,6 +459,7 @@ function setupEventListeners() {
         });
     }
 
+    gameField.addEventListener('click', handleGameFieldClick);
     target.addEventListener('click', handleTargetClick);
     startButton.addEventListener('click', startGame);
     window.addEventListener('mousemove', (event) => {
