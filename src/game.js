@@ -94,6 +94,10 @@ const state = {
     velocityX: 5,
     velocityY: 5,
     animationId: null,
+    reactionTimes: [],
+    bestReaction: null,
+    avgReaction: null,
+    targetShownAt: null,
 };
 
 // ------------------------------
@@ -206,6 +210,7 @@ function createFakeTargets() {
         fakeTarget.addEventListener('click', (e) => {
             e.stopPropagation();
             if (state.gameRunning) {
+                state.fakeHitCount = (state.fakeHitCount || 0) + 1;
                 endGame(true);
             }
         });
@@ -292,6 +297,7 @@ function startGame() {
     const gameFieldHeight = gameField.offsetHeight;
     state.targetX = 40 + Math.random() * (gameFieldWidth - 80);
     state.targetY = 40 + Math.random() * (gameFieldHeight - 80);
+    state.targetShownAt = Date.now();
 
     state.velocityX = (Math.random() - 0.5) * state.baseSpeed * 2;
     state.velocityY = (Math.random() - 0.5) * state.baseSpeed * 2;
@@ -342,14 +348,28 @@ function endGame(hitFake = false) {
         message.textContent = 'Time\'s up. Du kannst deinen Score jetzt speichern.';
     }
     showHighscoreEntryForm();
+    showStatsOverlay();
     updateDisplay({ pointsDisplay, timeDisplay, recordDisplay, points: state.points, remainingTime: state.remainingTime, record: state.record });
 }
 
 function handleTargetClick(event) {
     if (!state.gameRunning) return;
     event.stopPropagation();
-
     state.hitCount += 1;
+
+    // reaction time measurement
+    if (state.targetShownAt) {
+        const reaction = Date.now() - state.targetShownAt;
+        state.reactionTimes.push(reaction);
+        // update best
+        if (state.bestReaction === null || reaction < state.bestReaction) {
+            state.bestReaction = reaction;
+        }
+        // update average
+        const sum = state.reactionTimes.reduce((a, b) => a + b, 0);
+        state.avgReaction = Math.round(sum / state.reactionTimes.length);
+    }
+
     state.points = calculatePoints(state.points);
     updateDisplay({ pointsDisplay, timeDisplay, recordDisplay, points: state.points, remainingTime: state.remainingTime, record: state.record });
 
@@ -357,6 +377,7 @@ function handleTargetClick(event) {
     const gameFieldHeight = gameField.offsetHeight;
     state.targetX = 40 + Math.random() * (gameFieldWidth - 80);
     state.targetY = 40 + Math.random() * (gameFieldHeight - 80);
+    state.targetShownAt = Date.now();
 }
 
 function handleGameFieldClick() {
@@ -364,6 +385,74 @@ function handleGameFieldClick() {
 
     state.missCount += 1;
     message.textContent = 'Miss! Keep trying.';
+}
+
+function createStatsOverlay() {
+    if (document.getElementById('statsOverlay')) return;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'statsOverlay';
+    overlay.className = 'stats-overlay hidden';
+    overlay.innerHTML = `
+        <div class="stats-card" role="dialog" aria-modal="true" aria-labelledby="statsTitle">
+            <h2 id="statsTitle">Ergebnis</h2>
+            <div class="stats-roll">
+                <div class="stat-row"><span class="stat-label">Treffer:</span><span id="statHit" class="stat-value">0</span></div>
+                <div class="stat-row"><span class="stat-label">Falsche Treffer:</span><span id="statFake" class="stat-value">0</span></div>
+                <div class="stat-row"><span class="stat-label">Fehlversuche:</span><span id="statMiss" class="stat-value">0</span></div>
+                <div class="stat-row"><span class="stat-label">Durchschnittliche Reaktionszeit:</span><span id="statAvg" class="stat-value">0 ms</span></div>
+                <div class="stat-row"><span class="stat-label">Beste Reaktionszeit:</span><span id="statBest" class="stat-value">0 ms</span></div>
+            </div>
+            <button id="closeStats" class="stats-close">Schließen</button>
+        </div>`;
+
+    body.appendChild(overlay);
+
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) hideStatsOverlay();
+    });
+
+    const closeBtn = overlay.querySelector('#closeStats');
+    if (closeBtn) closeBtn.addEventListener('click', hideStatsOverlay);
+}
+
+function showStatsOverlay() {
+    createStatsOverlay();
+    const overlay = document.getElementById('statsOverlay');
+    if (!overlay) return;
+    overlay.classList.remove('hidden');
+
+    const hitEl = document.getElementById('statHit');
+    const fakeEl = document.getElementById('statFake');
+    const missEl = document.getElementById('statMiss');
+
+    if (hitEl) hitEl.textContent = String(state.hitCount || 0);
+    if (fakeEl) fakeEl.textContent = String(state.fakeHitCount || 0);
+    if (missEl) missEl.textContent = String(state.missCount || 0);
+    const avgEl = document.getElementById('statAvg');
+    const bestEl = document.getElementById('statBest');
+    if (avgEl) avgEl.textContent = (state.avgReaction !== null) ? `${state.avgReaction} ms` : '—';
+    if (bestEl) bestEl.textContent = (state.bestReaction !== null) ? `${state.bestReaction} ms` : '—';
+
+    const card = overlay.querySelector('.stats-card');
+    if (card) {
+        card.classList.remove('pop-in');
+        // force reflow then add animation class
+        void card.offsetWidth;
+        card.classList.add('pop-in');
+    }
+
+    const vals = overlay.querySelectorAll('.stat-value');
+    vals.forEach((el, i) => {
+        setTimeout(() => el.classList.add('flash'), 200 * i);
+        setTimeout(() => el.classList.remove('flash'), 200 * i + 1400);
+    });
+}
+
+function hideStatsOverlay() {
+    const overlay = document.getElementById('statsOverlay');
+    if (!overlay) return;
+    overlay.classList.add('hidden');
 }
 
 function showHighscoreEntryForm() {

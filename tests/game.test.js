@@ -97,4 +97,19 @@ describe("game module", () => {
     expect(document.getElementById("speedSlider").value).toBe("8");
     expect(document.getElementById("fakeCountSlider").value).toBe("3");
   });
+
+  test("records reaction time on target hit", async () => {
+    const mod = await import("../src/game.js");
+    const { state } = mod;
+
+    // simulate playing and a target shown 150ms ago
+    state.gameRunning = true;
+    state.targetShownAt = Date.now() - 150;
+
+    const target = document.getElementById("target");
+    target.click();
+
+    expect(state.reactionTimes.length).toBeGreaterThanOrEqual(1);
+    expect(state.avgReaction).toBeGreaterThanOrEqual(50);
+  });
 });
