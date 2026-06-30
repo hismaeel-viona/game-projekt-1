@@ -15,6 +15,7 @@ export function getElements() {
         gameTimeSlider: document.getElementById('gameTimeSlider'),
         speedSlider: document.getElementById('speedSlider'),
         fakeCountSlider: document.getElementById('fakeCountSlider'),
+        difficultySelector: document.getElementById('difficultySelector'),
         squareCountSlider: document.getElementById('squareCountSlider'),
         starCountSlider: document.getElementById('starCountSlider'),
         gameTimeValue: document.getElementById('gameTimeValue'),

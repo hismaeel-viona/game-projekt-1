@@ -172,4 +172,5 @@ Make the game usable with keyboard controls and ensure feature stability.
 
 | Stage | Task | Result | Notes |
 |---|---|---|---|
-| 1 | Refactor `src/game.js` to use a centralized `state` object and keep UI bindings in `src/ui.js` | Success | `src/game.js` now uses `state` and `ui`; `npm test` passes (14/14). |
+| 1 | Refactor `src/game.js` to use a centralized `state` object and keep UI bindings in `src/ui.js` | Success | `src/game.js` now uses `state` and `ui`; `npm test` passes. |
+| 2 | Add difficulty presets and selector UI, plus preset-driven game state | Success | Difficulty presets added; new tests added and `npm test` passes (16/16). |

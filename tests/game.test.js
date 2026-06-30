@@ -12,6 +12,11 @@ beforeAll(async () => {
         <input type="range" id="fakeCountSlider" value="0">
         <input type="range" id="squareCountSlider" value="8">
         <input type="range" id="starCountSlider" value="24">
+        <select id="difficultySelector">
+          <option value="easy">Easy</option>
+          <option value="medium" selected>Medium</option>
+          <option value="hard">Hard</option>
+        </select>
         <span id="gameTimeValue"></span>
         <span id="speedValue"></span>
         <span id="fakeCountValue"></span>
@@ -54,5 +59,42 @@ beforeAll(async () => {
 describe("game module", () => {
   test("game module loads without throwing", () => {
     expect(importError).toBeNull();
+  });
+
+  test("difficulty config returns presets and default fallback", async () => {
+    const { getDifficultyConfig } = await import("../src/game.js");
+
+    expect(getDifficultyConfig("easy")).toEqual({
+      gameTime: 25,
+      baseSpeed: 3,
+      fakeTargetCount: 0,
+    });
+
+    expect(getDifficultyConfig("hard")).toEqual({
+      gameTime: 15,
+      baseSpeed: 8,
+      fakeTargetCount: 3,
+    });
+
+    expect(getDifficultyConfig("unknown")).toEqual({
+      gameTime: 20,
+      baseSpeed: 5,
+      fakeTargetCount: 1,
+    });
+  });
+
+  test("applyDifficultyPreset updates state and slider values", async () => {
+    const { applyDifficultyPreset, state } = await import("../src/game.js");
+
+    applyDifficultyPreset("hard");
+
+    expect(state.difficulty).toBe("hard");
+    expect(state.gameTime).toBe(15);
+    expect(state.baseSpeed).toBe(8);
+    expect(state.fakeTargetCount).toBe(3);
+    expect(document.getElementById("difficultySelector").value).toBe("hard");
+    expect(document.getElementById("gameTimeSlider").value).toBe("15");
+    expect(document.getElementById("speedSlider").value).toBe("8");
+    expect(document.getElementById("fakeCountSlider").value).toBe("3");
   });
 });

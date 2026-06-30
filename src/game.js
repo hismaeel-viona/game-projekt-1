@@ -31,12 +31,58 @@ const {
 const body = document.body;
 const backgroundSquares = [];
 
+const difficultyPresets = {
+    easy: {
+        gameTime: 25,
+        baseSpeed: 3,
+        fakeTargetCount: 0,
+    },
+    medium: {
+        gameTime: 20,
+        baseSpeed: 5,
+        fakeTargetCount: 1,
+    },
+    hard: {
+        gameTime: 15,
+        baseSpeed: 8,
+        fakeTargetCount: 3,
+    },
+};
+
+function getDifficultyConfig(level) {
+    return difficultyPresets[level] || difficultyPresets.medium;
+}
+
+function applyDifficultyPreset(level) {
+    const preset = getDifficultyConfig(level);
+    state.difficulty = level;
+    state.gameTime = preset.gameTime;
+    state.baseSpeed = preset.baseSpeed;
+    state.fakeTargetCount = preset.fakeTargetCount;
+
+    if (ui.difficultySelector) {
+        ui.difficultySelector.value = level;
+    }
+    if (ui.gameTimeSlider) {
+        ui.gameTimeSlider.value = String(state.gameTime);
+    }
+    if (ui.speedSlider) {
+        ui.speedSlider.value = String(state.baseSpeed);
+    }
+    if (ui.fakeCountSlider) {
+        ui.fakeCountSlider.value = String(state.fakeTargetCount);
+    }
+
+    updateSliderValues();
+}
+
 const state = {
     points: 0,
     remainingTime: 20,
     gameRunning: false,
     timerId: null,
     record: 0,
+    difficulty: 'medium',
     gameTime: 20,
     baseSpeed: 5,
     fakeTargetCount: 0,
@@ -369,6 +415,12 @@ function setupEventListeners() {
         updateSliderValues();
     });
 
+    if (ui.difficultySelector) {
+        ui.difficultySelector.addEventListener('change', function () {
+            applyDifficultyPreset(this.value);
+        });
+    }
+
     squareCountSlider.addEventListener('input', function () {
         state.squareCount = parseInt(this.value, 10);
         updateSliderValues();
@@ -406,7 +458,7 @@ function initializeGame() {
     createBackgroundSquares();
     createBackgroundStars();
     state.record = loadRecord();
-    updateSliderValues();
+    applyDifficultyPreset(state.difficulty);
     updateDisplay({ pointsDisplay, timeDisplay, recordDisplay, points: state.points, remainingTime: state.remainingTime, record: state.record });
     renderHighscoreList();
     hideHighscoreEntryForm();
@@ -414,3 +466,5 @@ function initializeGame() {
 }
 
 initializeGame();
+
+export { getDifficultyConfig, applyDifficultyPreset, state };
