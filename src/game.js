@@ -2,6 +2,7 @@ import { getElements, createFakeTargetButton } from './ui.js';
 import { updateDisplay, updateRecord, calculatePoints } from './scoring.js';
 import { loadRecord, saveRecord, saveHighscoreEntry, getHighscoreList, clearHighscoreList } from './storage.js';
 
+const ui = getElements();
 const {
     gameField,
     target,
@@ -25,35 +26,67 @@ const {
     highscoreText,
     submitHighscore,
     clearHighscores
-} = getElements();
+} = ui;
 
 const body = document.body;
 const backgroundSquares = [];
 
-let points = 0;
-let remainingTime = 20;
-let gameRunning = false;
-let timerId = null;
-let record = 0;
-let gameTime = 20;
-let baseSpeed = 5;
-let fakeTargetCount = 0;
-let squareCount = 8;
-let starCount = 24;
-let fakeTargets = [];
+const state = {
+    points: 0,
+    remainingTime: 20,
+    gameRunning: false,
+    timerId: null,
+    record: 0,
+    gameTime: 20,
+    baseSpeed: 5,
+    fakeTargetCount: 0,
+    squareCount: 8,
+    starCount: 24,
+    fakeTargets: [],
+    targetX: 0,
+    targetY: 0,
+    velocityX: 5,
+    velocityY: 5,
+    animationId: null,
+};
 
-let targetX = 0;
-let targetY = 0;
-let velocityX = 5;
-let velocityY = 5;
-let animationId = null;
-
+// ------------------------------
+// Rendering and UI helpers
+// ------------------------------
 function updateSliderValues() {
-    gameTimeValue.textContent = gameTime + 's';
-    speedValue.textContent = baseSpeed;
-    fakeCountValue.textContent = fakeTargetCount;
-    squareCountValue.textContent = squareCount;
-    starCountValue.textContent = starCount;
+    gameTimeValue.textContent = state.gameTime + 's';
+    speedValue.textContent = state.baseSpeed;
+    fakeCountValue.textContent = state.fakeTargetCount;
+    squareCountValue.textContent = state.squareCount;
+    starCountValue.textContent = state.starCount;
+}
+
+function updateBackgroundSquares(mouseX, mouseY) {
+    const xFactor = Math.min(1, Math.max(0, mouseX / window.innerWidth));
+    const yFactor = Math.min(1, Math.max(0, mouseY / window.innerHeight));
+
+    backgroundSquares.forEach((square, index) => {
+        const baseSize = parseFloat(square.dataset.baseSize) || 18;
+        const size = baseSize + xFactor * 50;
+        const baseRotation = parseFloat(square.dataset.baseRotation) || 0;
+        const rotationOffset = (yFactor - 0.5) * 220 + (xFactor - 0.5) * 90;
+        const offset = index % 2 === 0 ? 1 : -1;
+
+        square.style.width = `${size}px`;
+        square.style.height = `${size}px`;
+        square.style.transform = `translate(-50%, -50%) rotate(${baseRotation + rotationOffset * offset}deg)`;
+        square.style.opacity = `${0.3 + 0.7 * xFactor}`;
+    });
+
+    updateBackgroundStars(xFactor);
+}
+
+function updateBackgroundStars(xFactor) {
+    document.querySelectorAll('.background-star').forEach((star) => {
+        const scale = 0.8 + xFactor * 1.5;
+        star.style.transform = `translate(-50%, -50%) scale(${scale})`;
+        star.style.opacity = `${0.4 + 0.4 * xFactor}`;
+    });
 }
 
 function createBackgroundSquares() {
@@ -66,7 +99,7 @@ function createBackgroundSquares() {
     container.className = 'background-squares';
     body.appendChild(container);
 
-    for (let i = 0; i < squareCount; i++) {
+    for (let i = 0; i < state.squareCount; i++) {
         const square = document.createElement('div');
         square.className = 'background-square';
         square.style.left = `${5 + Math.random() * 90}%`;
@@ -88,33 +121,16 @@ function resetBackgroundSquares() {
     if (existingContainer) {
         existingContainer.remove();
     }
+
     backgroundSquares.length = 0;
     createBackgroundSquares();
 }
 
-function updateBackgroundSquares(mouseX, mouseY) {
-    const xFactor = Math.min(1, Math.max(0, mouseX / window.innerWidth));
-    const yFactor = Math.min(1, Math.max(0, mouseY / window.innerHeight));
-
-    backgroundSquares.forEach((square, index) => {
-        const baseSize = parseFloat(square.dataset.baseSize) || 18;
-        const size = baseSize + xFactor * 50;
-        const baseRotation = parseFloat(square.dataset.baseRotation) || 0;
-        const rotationOffset = (yFactor - 0.5) * 220 + (xFactor - 0.5) * 90;
-        const offset = index % 2 === 0 ? 1 : -1;
-        square.style.width = `${size}px`;
-        square.style.height = `${size}px`;
-        square.style.transform = `translate(-50%, -50%) rotate(${baseRotation + rotationOffset * offset}deg)`;
-        square.style.opacity = `${0.3 + 0.7 * xFactor}`;
-    });
-    updateBackgroundStars(xFactor);
-}
-
 function createBackgroundStars() {
     const existingStars = document.querySelectorAll('.background-star');
-    existingStars.forEach(star => star.remove());
+    existingStars.forEach((star) => star.remove());
 
-    for (let i = 0; i < starCount; i++) {
+    for (let i = 0; i < state.starCount; i++) {
         const star = document.createElement('div');
         star.className = 'background-star';
         star.style.left = `${Math.random() * 100}%`;
@@ -125,40 +141,36 @@ function createBackgroundStars() {
     }
 }
 
-function updateBackgroundStars(xFactor) {
-    document.querySelectorAll('.background-star').forEach((star, index) => {
-        const scale = 0.8 + xFactor * 1.5;
-        star.style.transform = `translate(-50%, -50%) scale(${scale})`;
-        star.style.opacity = `${0.4 + 0.4 * xFactor}`;
-    });
-}
-
+// ------------------------------
+// Game state and logic
+// ------------------------------
 function createFakeTargets() {
-    fakeTargets = [];
-    for (let i = 0; i < fakeTargetCount; i++) {
+    state.fakeTargets = [];
+
+    for (let i = 0; i < state.fakeTargetCount; i++) {
         const fakeTarget = createFakeTargetButton(gameField);
         const fakeData = {
             element: fakeTarget,
             x: 40 + Math.random() * (gameField.offsetWidth - 80),
             y: 40 + Math.random() * (gameField.offsetHeight - 80),
-            vx: (Math.random() - 0.5) * baseSpeed * 2,
-            vy: (Math.random() - 0.5) * baseSpeed * 2
+            vx: (Math.random() - 0.5) * state.baseSpeed * 2,
+            vy: (Math.random() - 0.5) * state.baseSpeed * 2,
         };
 
-        fakeTarget.addEventListener('click', function (e) {
+        fakeTarget.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (gameRunning) {
+            if (state.gameRunning) {
                 endGame(true);
             }
         });
 
-        fakeTargets.push(fakeData);
+        state.fakeTargets.push(fakeData);
     }
 }
 
 function removeFakeTargets() {
-    fakeTargets.forEach(ft => ft.element.remove());
-    fakeTargets = [];
+    state.fakeTargets.forEach((ft) => ft.element.remove());
+    state.fakeTargets = [];
 }
 
 function updateTargetPosition() {
@@ -166,23 +178,23 @@ function updateTargetPosition() {
     const gameFieldHeight = gameField.offsetHeight;
     const targetRadius = 40;
 
-    targetX += velocityX;
-    targetY += velocityY;
+    state.targetX += state.velocityX;
+    state.targetY += state.velocityY;
 
-    if (targetX - targetRadius <= 0 || targetX + targetRadius >= gameFieldWidth) {
-        velocityX *= -1;
-        targetX = Math.max(targetRadius, Math.min(gameFieldWidth - targetRadius, targetX));
+    if (state.targetX - targetRadius <= 0 || state.targetX + targetRadius >= gameFieldWidth) {
+        state.velocityX *= -1;
+        state.targetX = Math.max(targetRadius, Math.min(gameFieldWidth - targetRadius, state.targetX));
     }
 
-    if (targetY - targetRadius <= 0 || targetY + targetRadius >= gameFieldHeight) {
-        velocityY *= -1;
-        targetY = Math.max(targetRadius, Math.min(gameFieldHeight - targetRadius, targetY));
+    if (state.targetY - targetRadius <= 0 || state.targetY + targetRadius >= gameFieldHeight) {
+        state.velocityY *= -1;
+        state.targetY = Math.max(targetRadius, Math.min(gameFieldHeight - targetRadius, state.targetY));
     }
 
-    target.style.left = targetX + 'px';
-    target.style.top = targetY + 'px';
+    target.style.left = state.targetX + 'px';
+    target.style.top = state.targetY + 'px';
 
-    fakeTargets.forEach(ft => {
+    state.fakeTargets.forEach((ft) => {
         ft.x += ft.vx;
         ft.y += ft.vy;
 
@@ -200,74 +212,72 @@ function updateTargetPosition() {
         ft.element.style.top = ft.y + 'px';
     });
 
-    if (gameRunning) {
-        animationId = requestAnimationFrame(updateTargetPosition);
+    if (state.gameRunning) {
+        state.animationId = requestAnimationFrame(updateTargetPosition);
     }
 }
 
 function startGame() {
     hideHighscoreEntryForm();
     message.textContent = 'Spiel läuft...';
-    points = 0;
-    remainingTime = gameTime;
-    gameRunning = true;
+    state.points = 0;
+    state.remainingTime = state.gameTime;
+    state.gameRunning = true;
 
     gameTimeSlider.disabled = true;
     speedSlider.disabled = true;
     fakeCountSlider.disabled = true;
     squareCountSlider.disabled = true;
     starCountSlider.disabled = true;
-
     startButton.disabled = true;
-    target.style.display = 'block';
 
+    target.style.display = 'block';
     createFakeTargets();
-    fakeTargets.forEach(ft => {
+    state.fakeTargets.forEach((ft) => {
         ft.element.style.display = 'block';
-        if (ft.vx === 0) ft.vx = baseSpeed;
-        if (ft.vy === 0) ft.vy = baseSpeed;
+        if (ft.vx === 0) ft.vx = state.baseSpeed;
+        if (ft.vy === 0) ft.vy = state.baseSpeed;
     });
 
     const gameFieldWidth = gameField.offsetWidth;
     const gameFieldHeight = gameField.offsetHeight;
-    targetX = 40 + Math.random() * (gameFieldWidth - 80);
-    targetY = 40 + Math.random() * (gameFieldHeight - 80);
+    state.targetX = 40 + Math.random() * (gameFieldWidth - 80);
+    state.targetY = 40 + Math.random() * (gameFieldHeight - 80);
 
-    velocityX = (Math.random() - 0.5) * baseSpeed * 2;
-    velocityY = (Math.random() - 0.5) * baseSpeed * 2;
+    state.velocityX = (Math.random() - 0.5) * state.baseSpeed * 2;
+    state.velocityY = (Math.random() - 0.5) * state.baseSpeed * 2;
 
-    if (velocityX === 0) velocityX = baseSpeed;
-    if (velocityY === 0) velocityY = baseSpeed;
+    if (state.velocityX === 0) state.velocityX = state.baseSpeed;
+    if (state.velocityY === 0) state.velocityY = state.baseSpeed;
 
-    if (animationId) cancelAnimationFrame(animationId);
+    if (state.animationId) cancelAnimationFrame(state.animationId);
     updateTargetPosition();
 
-    clearInterval(timerId);
-    timerId = setInterval(() => {
-        remainingTime--;
-        updateDisplay({ pointsDisplay, timeDisplay, recordDisplay, points, remainingTime, record });
+    clearInterval(state.timerId);
+    state.timerId = setInterval(() => {
+        state.remainingTime--;
+        updateDisplay({ pointsDisplay, timeDisplay, recordDisplay, points: state.points, remainingTime: state.remainingTime, record: state.record });
 
-        if (remainingTime <= 0) {
+        if (state.remainingTime <= 0) {
             endGame();
         }
     }, 1000);
 }
 
 function endGame(hitFake = false) {
-    gameRunning = false;
+    state.gameRunning = false;
 
-    clearInterval(timerId);
-    if (animationId) cancelAnimationFrame(animationId);
+    clearInterval(state.timerId);
+    if (state.animationId) cancelAnimationFrame(state.animationId);
 
-    const newRecord = updateRecord(points, record);
-    const isNewRecord = newRecord !== record;
-    if (isNewRecord) {
-        record = newRecord;
-        saveRecord(record);
+    const newRecord = updateRecord(state.points, state.record);
+    if (newRecord !== state.record) {
+        state.record = newRecord;
+        saveRecord(state.record);
     }
 
     target.style.display = 'none';
-    fakeTargets.forEach(ft => ft.element.style.display = 'none');
+    state.fakeTargets.forEach((ft) => ft.element.style.display = 'none');
     removeFakeTargets();
 
     startButton.disabled = false;
@@ -283,20 +293,19 @@ function endGame(hitFake = false) {
         message.textContent = 'Time\'s up. Du kannst deinen Score jetzt speichern.';
     }
     showHighscoreEntryForm();
-
-    updateDisplay({ pointsDisplay, timeDisplay, recordDisplay, points, remainingTime, record });
+    updateDisplay({ pointsDisplay, timeDisplay, recordDisplay, points: state.points, remainingTime: state.remainingTime, record: state.record });
 }
 
 function handleTargetClick() {
-    if (!gameRunning) return;
+    if (!state.gameRunning) return;
 
-    points = calculatePoints(points);
-    updateDisplay({ pointsDisplay, timeDisplay, recordDisplay, points, remainingTime, record });
+    state.points = calculatePoints(state.points);
+    updateDisplay({ pointsDisplay, timeDisplay, recordDisplay, points: state.points, remainingTime: state.remainingTime, record: state.record });
 
     const gameFieldWidth = gameField.offsetWidth;
     const gameFieldHeight = gameField.offsetHeight;
-    targetX = 40 + Math.random() * (gameFieldWidth - 80);
-    targetY = 40 + Math.random() * (gameFieldHeight - 80);
+    state.targetX = 40 + Math.random() * (gameFieldWidth - 80);
+    state.targetY = 40 + Math.random() * (gameFieldHeight - 80);
 }
 
 function showHighscoreEntryForm() {
@@ -316,7 +325,7 @@ function submitHighscoreEntry() {
     if (!highscoreText) return;
     const text = highscoreText.value.trim().slice(0, 50);
     saveHighscoreEntry({
-        score: points,
+        score: state.points,
         text,
         date: new Date().toISOString(),
     });
@@ -346,40 +355,40 @@ function renderHighscoreList() {
 
 function setupEventListeners() {
     gameTimeSlider.addEventListener('input', function () {
-        gameTime = parseInt(this.value, 10);
+        state.gameTime = parseInt(this.value, 10);
         updateSliderValues();
     });
 
     speedSlider.addEventListener('input', function () {
-        baseSpeed = parseInt(this.value, 10);
+        state.baseSpeed = parseInt(this.value, 10);
         updateSliderValues();
     });
 
     fakeCountSlider.addEventListener('input', function () {
-        fakeTargetCount = parseInt(this.value, 10);
+        state.fakeTargetCount = parseInt(this.value, 10);
         updateSliderValues();
     });
 
     squareCountSlider.addEventListener('input', function () {
-        squareCount = parseInt(this.value, 10);
+        state.squareCount = parseInt(this.value, 10);
         updateSliderValues();
         resetBackgroundSquares();
     });
 
     starCountSlider.addEventListener('input', function () {
-        starCount = parseInt(this.value, 10);
+        state.starCount = parseInt(this.value, 10);
         updateSliderValues();
         createBackgroundStars();
     });
 
     if (submitHighscore) {
-        submitHighscore.addEventListener('click', function () {
+        submitHighscore.addEventListener('click', () => {
             submitHighscoreEntry();
         });
     }
 
     if (clearHighscores) {
-        clearHighscores.addEventListener('click', function () {
+        clearHighscores.addEventListener('click', () => {
             clearHighscoreList();
             renderHighscoreList();
             message.textContent = 'Highscores gelöscht.';
@@ -388,18 +397,17 @@ function setupEventListeners() {
 
     target.addEventListener('click', handleTargetClick);
     startButton.addEventListener('click', startGame);
-    window.addEventListener('mousemove', event => {
+    window.addEventListener('mousemove', (event) => {
         updateBackgroundSquares(event.clientX, event.clientY);
     });
 }
 
-
 function initializeGame() {
     createBackgroundSquares();
     createBackgroundStars();
-    record = loadRecord();
+    state.record = loadRecord();
     updateSliderValues();
-    updateDisplay({ pointsDisplay, timeDisplay, recordDisplay, points, remainingTime, record });
+    updateDisplay({ pointsDisplay, timeDisplay, recordDisplay, points: state.points, remainingTime: state.remainingTime, record: state.record });
     renderHighscoreList();
     hideHighscoreEntryForm();
     setupEventListeners();

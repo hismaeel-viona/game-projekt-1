@@ -165,3 +165,11 @@ Make the game usable with keyboard controls and ensure feature stability.
 3. **Stage 3** – implement misclick logic
 4. **Stage 4** – add end-game statistics
 5. **Stage 5** – add keyboard controls and finalize tests
+
+---
+
+## Implementation status
+
+| Stage | Task | Result | Notes |
+|---|---|---|---|
+| 1 | Refactor `src/game.js` to use a centralized `state` object and keep UI bindings in `src/ui.js` | Success | `src/game.js` now uses `state` and `ui`; `npm test` passes (14/14). |
