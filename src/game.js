@@ -98,7 +98,69 @@ const state = {
     bestReaction: null,
     avgReaction: null,
     targetShownAt: null,
+    medianReaction: null,
+    p90Reaction: null,
 };
+
+function computeMedian(arr) {
+    if (!arr || arr.length === 0) return null;
+    const sorted = Array.from(arr).sort((a,b)=>a-b);
+    const mid = Math.floor(sorted.length / 2);
+    if (sorted.length % 2 === 0) {
+        return Math.round((sorted[mid-1] + sorted[mid]) / 2);
+    }
+    return sorted[mid];
+}
+
+function computePercentile(arr, p) {
+    if (!arr || arr.length === 0) return null;
+    const sorted = Array.from(arr).sort((a,b)=>a-b);
+    const idx = Math.ceil((p/100) * sorted.length) - 1;
+    return sorted[Math.max(0, Math.min(sorted.length-1, idx))];
+}
+
+function renderSparkline(svgEl, data) {
+    if (!svgEl) return;
+    // try to get rendered size; fall back to defaults
+    const rect = svgEl.getBoundingClientRect();
+    const width = rect.width || svgEl.clientWidth || 300;
+    const height = rect.height || svgEl.clientHeight || 48;
+    svgEl.innerHTML = '';
+    if (!data || data.length === 0) return;
+    const sorted = Array.from(data).slice(-40);
+    const max = Math.max(...sorted);
+    const min = Math.min(...sorted);
+    const len = sorted.length;
+
+    // set explicit viewBox for consistent scaling
+    svgEl.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    svgEl.setAttribute('preserveAspectRatio', 'none');
+
+    const points = sorted.map((v,i)=>{
+        const x = (len === 1) ? width/2 : (i/(len-1)) * width;
+        const y = height - ((v - min) / Math.max(1, (max-min))) * height;
+        return `${x},${y}`;
+    }).join(' ');
+
+    const ns = 'http://www.w3.org/2000/svg';
+    const poly = document.createElementNS(ns,'polyline');
+    poly.setAttribute('points', points);
+    poly.setAttribute('fill','none');
+    poly.setAttribute('stroke','#facc15');
+    poly.setAttribute('stroke-width','2');
+    poly.setAttribute('stroke-linecap','round');
+    poly.setAttribute('stroke-linejoin','round');
+    svgEl.appendChild(poly);
+
+    // subtle area fill for better visibility
+    if (len > 1) {
+        const areaPoints = `${points} ${width},${height} 0,${height}`;
+        const polyFill = document.createElementNS(ns,'polygon');
+        polyFill.setAttribute('points', areaPoints);
+        polyFill.setAttribute('fill', 'rgba(250,200,21,0.08)');
+        svgEl.insertBefore(polyFill, poly);
+    }
+}
 
 // ------------------------------
 // Rendering and UI helpers
@@ -396,13 +458,27 @@ function createStatsOverlay() {
     overlay.innerHTML = `
         <div class="stats-card" role="dialog" aria-modal="true" aria-labelledby="statsTitle">
             <h2 id="statsTitle">Ergebnis</h2>
-            <div class="stats-roll">
-                <div class="stat-row"><span class="stat-label">Treffer:</span><span id="statHit" class="stat-value">0</span></div>
-                <div class="stat-row"><span class="stat-label">Falsche Treffer:</span><span id="statFake" class="stat-value">0</span></div>
-                <div class="stat-row"><span class="stat-label">Fehlversuche:</span><span id="statMiss" class="stat-value">0</span></div>
-                <div class="stat-row"><span class="stat-label">Durchschnittliche Reaktionszeit:</span><span id="statAvg" class="stat-value">0 ms</span></div>
-                <div class="stat-row"><span class="stat-label">Beste Reaktionszeit:</span><span id="statBest" class="stat-value">0 ms</span></div>
-            </div>
+                    <div class="stats-roll">
+                        <div class="stat-row"><span class="stat-label">Treffer:</span><span id="statHit" class="stat-value">0</span></div>
+                        <div class="stat-row"><span class="stat-label">Falsche Treffer:</span><span id="statFake" class="stat-value">0</span></div>
+                        <div class="stat-row"><span class="stat-label">Fehlversuche:</span><span id="statMiss" class="stat-value">0</span></div>
+                        <div class="stat-row"><span class="stat-label">Durchschnittliche Reaktionszeit:</span><span id="statAvg" class="stat-value">0 ms</span></div>
+                        <div class="stat-row"><span class="stat-label">Beste Reaktionszeit:</span><span id="statBest" class="stat-value">0 ms</span></div>
+                        <div class="stat-row"><span class="stat-label">Median Reaktionszeit:</span><span id="statMedian" class="stat-value">0 ms</span></div>
+                        <div class="stat-row"><span class="stat-label">90th Percentile:</span><span id="statP90" class="stat-value">0 ms</span></div>
+                        <div class="stat-row sparkline-row">
+                            <div class="sparkline-wrapper">
+                                <div id="statSparkMax" class="axis-label">0 ms</div>
+                                <svg id="statSparkline" width="100%" height="48" aria-hidden="true"></svg>
+                                <div id="statSparkMin" class="axis-label">0 ms</div>
+                            </div>
+                            <div class="sparkline-x" aria-hidden="true">
+                                <span id="statX0">0</span>
+                                <span id="statXmid">—</span>
+                                <span id="statXend">—</span>
+                            </div>
+                        </div>
+                    </div>
             <button id="closeStats" class="stats-close">Schließen</button>
         </div>`;
 
@@ -433,6 +509,42 @@ function showStatsOverlay() {
     const bestEl = document.getElementById('statBest');
     if (avgEl) avgEl.textContent = (state.avgReaction !== null) ? `${state.avgReaction} ms` : '—';
     if (bestEl) bestEl.textContent = (state.bestReaction !== null) ? `${state.bestReaction} ms` : '—';
+    const medianEl = document.getElementById('statMedian');
+    const p90El = document.getElementById('statP90');
+    const sparkEl = document.getElementById('statSparkline');
+
+    // compute median/p90
+    const median = computeMedian(state.reactionTimes);
+    const p90 = computePercentile(state.reactionTimes, 90);
+    state.medianReaction = median;
+    state.p90Reaction = p90;
+
+    if (medianEl) medianEl.textContent = median !== null ? `${median} ms` : '—';
+    if (p90El) p90El.textContent = p90 !== null ? `${p90} ms` : '—';
+
+    // render sparkline and axis labels
+    if (sparkEl) renderSparkline(sparkEl, state.reactionTimes);
+    const sparkMax = document.getElementById('statSparkMax');
+    const sparkMin = document.getElementById('statSparkMin');
+    const x0 = document.getElementById('statX0');
+    const xmid = document.getElementById('statXmid');
+    const xend = document.getElementById('statXend');
+    const values = state.reactionTimes || [];
+    if (values.length > 0) {
+        const max = Math.max(...values);
+        const min = Math.min(...values);
+        if (sparkMax) sparkMax.textContent = `${max} ms`;
+        if (sparkMin) sparkMin.textContent = `${min} ms`;
+        if (x0) x0.textContent = '1';
+        if (xmid) xmid.textContent = String(Math.ceil(values.length / 2));
+        if (xend) xend.textContent = String(values.length);
+    } else {
+        if (sparkMax) sparkMax.textContent = '—';
+        if (sparkMin) sparkMin.textContent = '—';
+        if (x0) x0.textContent = '—';
+        if (xmid) xmid.textContent = '—';
+        if (xend) xend.textContent = '—';
+    }
 
     const card = overlay.querySelector('.stats-card');
     if (card) {
@@ -569,4 +681,4 @@ function initializeGame() {
 
 initializeGame();
 
-export { getDifficultyConfig, applyDifficultyPreset, state };
+export { getDifficultyConfig, applyDifficultyPreset, state, showStatsOverlay };

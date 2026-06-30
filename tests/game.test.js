@@ -112,4 +112,30 @@ describe("game module", () => {
     expect(state.reactionTimes.length).toBeGreaterThanOrEqual(1);
     expect(state.avgReaction).toBeGreaterThanOrEqual(50);
   });
+
+  test("computes median, p90 and renders sparkline", async () => {
+    const mod = await import("../src/game.js");
+    const { state, showStatsOverlay } = mod;
+
+    // prepare some reaction times
+    state.reactionTimes = [120, 150, 90, 200, 180, 300, 110];
+    state.bestReaction = Math.min(...state.reactionTimes);
+    const overlayBefore = document.getElementById('statsOverlay');
+    if (overlayBefore) overlayBefore.remove();
+
+    showStatsOverlay();
+
+    const medianEl = document.getElementById('statMedian');
+    const p90El = document.getElementById('statP90');
+    const spark = document.getElementById('statSparkline');
+
+    expect(medianEl).toBeTruthy();
+    expect(p90El).toBeTruthy();
+    expect(spark).toBeTruthy();
+    expect(medianEl.textContent).toMatch(/\d+\s*ms/);
+    expect(p90El.textContent).toMatch(/\d+\s*ms/);
+    // sparkline should contain a polyline
+    const poly = spark.querySelector('polyline');
+    expect(poly).toBeTruthy();
+  });
 });
