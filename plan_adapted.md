@@ -176,3 +176,4 @@ Make the game usable with keyboard controls and ensure feature stability.
 | 2 | Add difficulty presets and selector UI, plus preset-driven game state | Success | Difficulty presets added; new tests added and `npm test` passes (16/16). |
 | 3 | Add misclick tracking for blank field clicks and classify hit types | Success | `hitCount`, `fakeHitCount`, and `missCount` added; blank-field clicks now increment miss count. |
 | 4 | End-game statistics and visual summary overlay | Success | Collected avg/best/median/p90 reaction times; added sparkline with axis labels and numeric ticks; overlay animations and tests added. |
+| 5 | Keyboard accessibility, pause UX, ARIA announcements and shortcuts | Success | Added `S` start, `P` pause/resume, `Enter`/`Space` activation, `Escape` to close overlay; added `Ctrl/Cmd+S` to submit highscore; pause overlay and aria-live announcements implemented. |

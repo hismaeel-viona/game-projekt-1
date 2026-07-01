@@ -100,6 +100,7 @@ const state = {
     targetShownAt: null,
     medianReaction: null,
     p90Reaction: null,
+    paused: false,
 };
 
 function computeMedian(arr) {
@@ -325,7 +326,7 @@ function updateTargetPosition() {
         ft.element.style.top = ft.y + 'px';
     });
 
-    if (state.gameRunning) {
+    if (state.gameRunning && !state.paused) {
         state.animationId = requestAnimationFrame(updateTargetPosition);
     }
 }
@@ -348,6 +349,7 @@ function startGame() {
     startButton.disabled = true;
 
     target.style.display = 'block';
+    try { target.focus(); } catch (e) {}
     createFakeTargets();
     state.fakeTargets.forEach((ft) => {
         ft.element.style.display = 'block';
@@ -416,6 +418,7 @@ function endGame(hitFake = false) {
 
 function handleTargetClick(event) {
     if (!state.gameRunning) return;
+    if (state.paused) return;
     event.stopPropagation();
     state.hitCount += 1;
 
@@ -440,6 +443,47 @@ function handleTargetClick(event) {
     state.targetX = 40 + Math.random() * (gameFieldWidth - 80);
     state.targetY = 40 + Math.random() * (gameFieldHeight - 80);
     state.targetShownAt = Date.now();
+}
+
+function pauseGame() {
+    if (!state.gameRunning || state.paused) return;
+    state.paused = true;
+    if (state.timerId) {
+        clearInterval(state.timerId);
+        state.timerId = null;
+    }
+    if (state.animationId) {
+        cancelAnimationFrame(state.animationId);
+        state.animationId = null;
+    }
+    message.textContent = 'Pausiert';
+    showPauseOverlay();
+    announce('Spiel pausiert');
+}
+
+function resumeGame() {
+    if (!state.gameRunning || !state.paused) return;
+    state.paused = false;
+    // restart animation
+    updateTargetPosition();
+    // restart timer
+    if (state.timerId) clearInterval(state.timerId);
+    state.timerId = setInterval(() => {
+        if (!state.paused) {
+            state.remainingTime--;
+            updateDisplay({ pointsDisplay, timeDisplay, recordDisplay, points: state.points, remainingTime: state.remainingTime, record: state.record });
+            if (state.remainingTime <= 0) {
+                endGame();
+            }
+        }
+    }, 1000);
+    message.textContent = 'Spiel läuft...';
+    hidePauseOverlay();
+    announce('Spiel fortgesetzt');
+}
+
+function togglePause() {
+    if (state.paused) resumeGame(); else pauseGame();
 }
 
 function handleGameFieldClick() {
@@ -490,6 +534,46 @@ function createStatsOverlay() {
 
     const closeBtn = overlay.querySelector('#closeStats');
     if (closeBtn) closeBtn.addEventListener('click', hideStatsOverlay);
+}
+
+function ensureLiveRegion() {
+    if (document.getElementById('liveRegion')) return;
+    const lr = document.createElement('div');
+    lr.id = 'liveRegion';
+    lr.setAttribute('aria-live','polite');
+    lr.className = 'sr-only';
+    body.appendChild(lr);
+}
+
+function announce(msg) {
+    ensureLiveRegion();
+    const lr = document.getElementById('liveRegion');
+    if (!lr) return;
+    lr.textContent = msg;
+    // clear after a short time to avoid repeated announcements
+    setTimeout(() => { if (lr.textContent === msg) lr.textContent = ''; }, 2500);
+}
+
+function createPauseOverlay() {
+    if (document.getElementById('pauseOverlay')) return;
+    const ov = document.createElement('div');
+    ov.id = 'pauseOverlay';
+    ov.className = 'pause-overlay hidden';
+    ov.innerHTML = `<div class="pause-card">Pausiert</div>`;
+    body.appendChild(ov);
+}
+
+function showPauseOverlay() {
+    createPauseOverlay();
+    const ov = document.getElementById('pauseOverlay');
+    if (!ov) return;
+    ov.classList.remove('hidden');
+}
+
+function hidePauseOverlay() {
+    const ov = document.getElementById('pauseOverlay');
+    if (!ov) return;
+    ov.classList.add('hidden');
 }
 
 function showStatsOverlay() {
@@ -663,9 +747,62 @@ function setupEventListeners() {
     gameField.addEventListener('click', handleGameFieldClick);
     target.addEventListener('click', handleTargetClick);
     startButton.addEventListener('click', startGame);
+    // Keyboard controls: Start (S), Pause/Resume (P), Close overlay (Escape), Enter/Space to hit target
+    window.addEventListener('keydown', (e) => {
+        const key = e.key.toLowerCase();
+        if (key === 's') {
+            if (!state.gameRunning) startGame();
+        }
+        if (key === 'p') {
+            if (state.gameRunning) togglePause();
+        }
+        if (e.key === 'Escape') {
+            hideStatsOverlay();
+        }
+        if ((e.key === 'Enter' || e.key === ' ') && document.activeElement === target) {
+            // simulate click
+            handleTargetClick(new Event('click'));
+            // prevent default to avoid page scroll on space
+            e.preventDefault();
+        }
+        // Ctrl/Cmd+S to save highscore when entry form visible
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+            if (highscoreEntryForm && !highscoreEntryForm.classList.contains('hidden')) {
+                submitHighscoreEntry();
+                e.preventDefault();
+                announce('Highscore gespeichert');
+            }
+        }
+    });
     window.addEventListener('mousemove', (event) => {
         updateBackgroundSquares(event.clientX, event.clientY);
     });
+}
+
+function createControlsPanel() {
+    const existing = document.getElementById('controlsPanel');
+    if (existing) return;
+
+    const panel = document.createElement('div');
+    panel.id = 'controlsPanel';
+    panel.className = 'controls-panel';
+    panel.innerHTML = `
+        <h3>Controls</h3>
+        <ul>
+            <li><strong>S</strong> — Spiel starten</li>
+            <li><strong>P</strong> — Pause / Fortsetzen</li>
+            <li><strong>Enter</strong> / <strong>Space</strong> — Ziel treffen (wenn fokussiert)</li>
+            <li><strong>Esc</strong> — Overlay schließen</li>
+            <li><strong>Ctrl/Cmd + S</strong> — Highscore speichern (wenn Formular sichtbar)</li>
+        </ul>
+    `;
+
+    const options = document.querySelector('.options');
+    if (options) {
+        options.appendChild(panel);
+    } else {
+        body.appendChild(panel);
+    }
 }
 
 function initializeGame() {
@@ -677,6 +814,7 @@ function initializeGame() {
     renderHighscoreList();
     hideHighscoreEntryForm();
     setupEventListeners();
+    createControlsPanel();
 }
 
 initializeGame();

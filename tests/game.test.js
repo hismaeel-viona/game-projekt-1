@@ -138,4 +138,72 @@ describe("game module", () => {
     const poly = spark.querySelector('polyline');
     expect(poly).toBeTruthy();
   });
+
+  test("keyboard controls: S start, Enter hit, P pause/resume, Escape close overlay", async () => {
+    const mod = await import("../src/game.js");
+    const { state, showStatsOverlay } = mod;
+
+    // ensure game not running
+    state.gameRunning = false;
+
+    // press 's' to start
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 's' }));
+    expect(state.gameRunning).toBe(true);
+
+    const target = document.getElementById('target');
+    // ensure target visible and focusable
+    expect(target.style.display).toBe('block');
+    target.focus();
+
+    const prevHits = state.hitCount || 0;
+    // press Enter to hit
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    expect(state.hitCount).toBeGreaterThanOrEqual(prevHits + 1);
+
+    // toggle pause
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'p' }));
+    expect(state.paused).toBe(true);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'p' }));
+    expect(state.paused).toBe(false);
+
+    // show overlay and close with Escape
+    showStatsOverlay();
+    expect(document.getElementById('statsOverlay').classList.contains('hidden')).toBe(false);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(document.getElementById('statsOverlay').classList.contains('hidden')).toBe(true);
+  });
+
+  test("pause overlay and live region announcements, Ctrl+S saves highscore", async () => {
+    const mod = await import("../src/game.js");
+    const { state } = mod;
+
+    // ensure game running and not paused
+    state.gameRunning = true;
+    state.paused = false;
+
+    // press P to pause
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'p' }));
+    expect(state.paused).toBe(true);
+    const pauseOv = document.getElementById('pauseOverlay');
+    expect(pauseOv).toBeTruthy();
+    expect(pauseOv.classList.contains('hidden')).toBe(false);
+
+    const live = document.getElementById('liveRegion');
+    expect(live).toBeTruthy();
+
+    // resume
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'p' }));
+    expect(state.paused).toBe(false);
+    expect(pauseOv.classList.contains('hidden')).toBe(true);
+
+    // show highscore form and test Ctrl+S
+    const form = document.getElementById('highscoreEntryForm');
+    const text = document.getElementById('highscoreText');
+    form.classList.remove('hidden');
+    text.value = 'test save';
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true }));
+    // after saving, form should be hidden again
+    expect(form.classList.contains('hidden')).toBe(true);
+  });
 });
