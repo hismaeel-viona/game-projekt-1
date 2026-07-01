@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <radialGradient id="appleGrad" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#c9ff72"/>
+      <stop offset="60%" stop-color="#67d63c"/>
+      <stop offset="100%" stop-color="#2f9b28"/>
+    </radialGradient>
+
+    <linearGradient id="leafGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8ff56a"/>
+      <stop offset="100%" stop-color="#278a2f"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Shadow -->
+  <ellipse cx="64" cy="108" rx="28" ry="8"
+           fill="#000" opacity="0.18"/>
+
+  <!-- Stem -->
+  <path d="M66 26
+           C67 18 70 12 74 8"
+        fill="none"
+        stroke="#6b4120"
+        stroke-width="4"
+        stroke-linecap="round"/>
+
+  <!-- Leaf -->
+  <path d="M71 16
+           C88 8 102 18 94 35
+           C82 34 72 29 71 16Z"
+        fill="url(#leafGrad)"
+        stroke="#1d6623"
+        stroke-width="2"/>
+
+  <!-- Apple Body -->
+  <path d="
+    M64 28
+    C45 24 28 39 28 60
+    C28 91 47 108 64 108
+    C81 108 100 91 100 60
+    C100 39 83 24 64 28Z"
+    fill="url(#appleGrad)"
+    stroke="#23781d"
+    stroke-width="3"/>
+
+  <!-- Top Indent -->
+  <path d="M50 33
+           C57 40 71 40 78 33"
+        fill="none"
+        stroke="#23781d"
+        stroke-width="3"
+        stroke-linecap="round"/>
+
+  <!-- Shine -->
+  <ellipse cx="49" cy="50"
+           rx="10" ry="18"
+           fill="#fff"
+           opacity="0.28"
+           transform="rotate(-20 49 50)"/>
+
+  <!-- Small Shine -->
+  <circle cx="44" cy="42" r="3"
+          fill="#fff" opacity="0.7"/>
+</svg>

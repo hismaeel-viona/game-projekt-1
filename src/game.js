@@ -1,4 +1,4 @@
-import { getElements, createFakeTargetButton } from './ui.js';
+import { getElements, createFakeTargetButton, decorateTargetButton } from './ui.js';
 import { updateDisplay, updateRecord, calculatePoints } from './scoring.js';
 import { loadRecord, saveRecord, saveHighscoreEntry, getHighscoreList, clearHighscoreList } from './storage.js';
 
@@ -257,6 +257,12 @@ function createBackgroundStars() {
 // ------------------------------
 // Game state and logic
 // ------------------------------
+function ensureTargetVisuals() {
+    if (!target) return null;
+    if (target.querySelector('.target-svg')) return target;
+    return decorateTargetButton(target, 'apple');
+}
+
 function createFakeTargets() {
     state.fakeTargets = [];
 
@@ -348,6 +354,7 @@ function startGame() {
     starCountSlider.disabled = true;
     startButton.disabled = true;
 
+    ensureTargetVisuals();
     target.style.display = 'block';
     try { target.focus(); } catch (e) {}
     createFakeTargets();
